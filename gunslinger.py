@@ -62,7 +62,7 @@ class Gunslinger():
                                       headers=self.header,
                                       params=self.payload)
         search_dat = search_results.json()
-        return search_dat['results']
+        return search_dat.get('results',[])
 
 
     def get_requests(self, url):
@@ -197,6 +197,8 @@ class Gunslinger():
         prev_time = None
         while True:
             r = self.get_results()
+            if len(r) == 0:
+                continue
             r, prev_time = self.remove_repeated_results(r, prev_time)
             self.parse_search_results(r)
 
