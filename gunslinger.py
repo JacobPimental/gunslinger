@@ -52,6 +52,7 @@ class Gunslinger():
             data = yaml.safe_load(f)
             return f
 
+
     def get_results(self):
         """Gets results of search from URLScan
 
@@ -61,8 +62,12 @@ class Gunslinger():
         search_results = requests.get('https://urlscan.io/api/v1/search/',
                                       headers=self.header,
                                       params=self.payload)
-        search_dat = search_results.json()
-        return search_dat.get('results',[])
+        try:
+            search_dat = search_results.json()
+            return search_dat.get('results',[])
+        except Exception as e:
+            print(e)
+            return []
 
 
     def get_requests(self, url):
@@ -110,37 +115,41 @@ class Gunslinger():
             requests (array): Array of objects contianing data on the request
                 made
         """
+        print(len(requests))
         for request in requests:
-            response = request['response'] #Get the response for each request
-            if not 'hash' in response.keys():
+            try:
+                response = request['response'] #Get the response for each request
+                h = response['hash']
+                script = self.get_response(response, h)
+                url = response['response']['url']
+                print(f'Checking: {url}')
+                if self.check_if_mage(script):
+                    self.client.chat_postMessage(channel='#logging',
+                                                 text=url)
+                    print(url)
+            except Exception as e:
                 continue
-            h = response['hash']
-            script = self.get_response(response, h)
-            url = response['response']['url']
-            print(f'Checking: {url}')
-            if self.check_if_mage(script):
-                self.client.chat_postMessage(channel='#logging',
-                                             text=url)
-                print(url)
-
 
     def check_if_mage(self, script):
         """Checks if script is magecart based on regex.
 
         Arguments:
-            script (string): Jaascript to run regexes on
+            script (string): Javascript to run regexes on
 
         Returns:
             boolean: True if regexes match, false if not
         """
-        reg1 = r'([0-9A-Z]{3,})\1'
-        reg2 = r'function [a-zA-Z]{3}\(\)'
-        results = set(re.findall(reg1, script, flags=re.IGNORECASE))
-        top_hit = max([script.count(r) for r in results])
-        function_true = len(re.findall(reg2, script, flags=re.IGNORECASE)) > 0
-        if top_hit > 30 and function_true:
-            return True
-        return False
+        try:
+            reg1 = r'([0-9A-Z]{3,})\1'
+            reg2 = r'function [a-zA-Z]{3}\(\)'
+            results = set(re.findall(reg1, script, flags=re.IGNORECASE))
+            top_hit = max([script.count(r) for r in results])
+            function_true = len(re.findall(reg2, script, flags=re.IGNORECASE)) > 0
+            if top_hit > 30 and function_true:
+                return True
+            return False
+        except Exception as e:
+            return False
 
 
     def parse_search_results(self, results):
@@ -152,9 +161,11 @@ class Gunslinger():
         for result in results:
             try:
                 url = result['result'] #Contains the URLScan info for URL
+                print(f'Checking {url}')
                 requests = self.get_requests(url)
                 self.parse_requests(requests)
             except Exception as e:
+                print(e)
                 continue
 
 
@@ -181,7 +192,7 @@ class Gunslinger():
                 lst_time_s = r[i]['task']['time']
                 lst_time = dt.strptime(lst_time_s, '%Y-%m-%dT%H:%M:%S.%fZ')
                 if lst_time >= prev_time:
-                    r = r[:i]
+                    r = r[:i+1]
                     prev_time = cur_time
                     break
         else:
@@ -196,6 +207,7 @@ class Gunslinger():
         print('\t― Stephen King, The Gunslinger')
         prev_time = None
         while True:
+            print('Getting results')
             r = self.get_results()
             if len(r) == 0:
                 continue
