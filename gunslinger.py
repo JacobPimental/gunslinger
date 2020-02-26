@@ -1,3 +1,4 @@
+import time
 import re
 import requests
 import json
@@ -164,24 +165,39 @@ class Gunslinger():
 
 
     def get_results(self, prev_time):
-        data = self.client.conversations_history(channel=self.channel,
-                                                 limit=1000,
-                                                 oldest=prev_time)
-        messages = data.data['messages']
-        for i in range(len(messages)-1):
-            m = messages[i]
-            if 'reactions' in messages[i+1] and 'New batch' in m['text'] \
-               and not 'reactions' in m.keys():
-                ts = m['ts']
+        try:
+            data = self.client.conversations_history(channel=self.channel,
+                                                     limit=1000,
+                                                     oldest=prev_time)
+            messages = data.data['messages']
+            for i in range(len(messages)-1):
+                m = messages[i]
+                if 'reactions' in messages[i+1] and 'New batch' in m['text'] \
+                   and not 'reactions' in m.keys():
+                    ts = m['ts']
+                    self.client.reactions_add(channel=self.channel,
+                                              name='+1',
+                                              timestamp=ts)
+                    prev_time = ts
+                    dat = m['text'].strip().split('\n')[1:]
+                    return dat, prev_time
+                elif 'reactions' in m.keys():
+                    return [], 0
+            if 'reactions' in messages[i] and 'New batch' in \
+               messages[i]['text']:
+                ts=messages[i]['ts']
                 self.client.reactions_add(channel=self.channel,
                                           name='+1',
                                           timestamp=ts)
                 prev_time = ts
                 dat = m['text'].strip().split('\n')[1:]
                 return dat, prev_time
-            elif 'reactions' in m.keys():
+            else:
                 return [], 0
-        return [], 0
+        except Exception as e:
+            print(e)
+            time.sleep(60)
+            return [],0
 
 
     def run(self):
@@ -194,6 +210,7 @@ class Gunslinger():
             print('Getting results')
             r,prev_time = self.get_results(prev_time)
             if len(r) == 0:
+                time.sleep(15)
                 continue
             print(r)
             print(r[0].replace('<','').replace('>',''))
