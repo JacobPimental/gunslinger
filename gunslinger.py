@@ -5,7 +5,7 @@ import json
 import slack
 import argparse
 import yaml
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta as td
 
 class Gunslinger():
     """Main class for Gunslinger application.
@@ -30,13 +30,9 @@ class Gunslinger():
         api_key = data['urlscan_key']
         slack_token = data['slack_token']
         query = data.get('query', '*')
-        num_results = data.get('num_results', 100)
         api_key = kwargs['urlscan_key']
         self.header = {'Content-Type': 'application/json',
                        'Api-Key': api_key}
-        self.payload = {'q':query,
-                        'size':num_results,
-                        'sort':'time'}
         self.client = slack.WebClient(token=slack_token)
         self.channel = self.get_channel(data.get('queue_channel', 'mq'))
 
@@ -164,12 +160,15 @@ class Gunslinger():
                 continue
 
 
-    def get_results(self, prev_time):
+    def get_results(self, prev_time, latest, cursor=""):
         try:
-            data = self.client.conversations_history(channel=self.channel,
-                                                     limit=1000,
-                                                     oldest=prev_time)
-            messages = data.data['messages']
+            r = self.client.conversations_history(channel=self.channel,
+                                                  limit=200,
+                                                  oldest=prev_time,
+                                                  cursor=cursor)
+            data = r.data
+            messages = data['messages']
+            print(len(messages))
             for i in range(len(messages)-1):
                 m = messages[i]
                 if 'reactions' in messages[i+1] and 'New batch' in m['text'] \
@@ -193,6 +192,11 @@ class Gunslinger():
                 dat = m['text'].strip().split('\n')[1:]
                 return dat, prev_time
             else:
+                if 'response_metadata' in data.keys() and \
+                   'next_cursor' in data['response_metadata'].keys():
+                    print('Getting next cursor')
+                    cursor=data['response_metadata']['next_cursor']
+                    return self.get_results(prev_time, latest, cursor)
                 return [], 0
         except Exception as e:
             print(e)
@@ -206,9 +210,13 @@ class Gunslinger():
               'gunslinger followed.”')
         print('\t― Stephen King, The Gunslinger')
         prev_time = 0
+        latest = dt.now()
         while True:
             print('Getting results')
-            r,prev_time = self.get_results(prev_time)
+            r,prev_time = self.get_results(prev_time, latest)
+            latest = (dt.fromtimestamp(float(prev_time)) + td(hours=1)).timestamp()
+            print(prev_time)
+            print(latest)
             if len(r) == 0:
                 time.sleep(15)
                 continue
@@ -228,9 +236,6 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('-q', '--query', help='URLScan query (optional)',
                         default='*')
-    parser.add_argument('-n', '--num_results',
-                        help='Number of results to go through per iteration',
-                        type=int, default=100)
     args = parser.parse_args()
     #print(vars(args))
     gunslinger = Gunslinger(**vars(args))
