@@ -61,12 +61,12 @@ do
 done
 if [ -z "$SQS_URL" ]
 then
-	reload_cmd="python reloader.py $URLSCAN_KEY$SLACK_TOKEN$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
+	reload_cmd="python3 reloader.py $URLSCAN_KEY$SLACK_TOKEN$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
 else
-	reload_cmd="python reloader.py $URLSCAN_KEY$SQS_URL$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
+	reload_cmd="python3 reloader.py $URLSCAN_KEY$SQS_URL$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
 fi
 
-gunslinger_cmd="python gunslinger.py $URLSCAN_KEY$SLACK_TOKEN$SQS_URL$QUEUE_CHANNEL$RULE_DIR"
+gunslinger_cmd="python3 gunslinger.py $URLSCAN_KEY$SLACK_TOKEN$SQS_URL$QUEUE_CHANNEL$RULE_DIR"
 
 nohup $reload_cmd
 for i in $(seq 1 $NUM_WORKERS)
