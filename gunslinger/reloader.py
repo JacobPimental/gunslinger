@@ -121,13 +121,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--urlscan_key', help='URLScan API key',
                         required=True)
-    parser.add_argument('-a', '--sqs_url', help='AWS SQS Url')
+    parser.add_argument('-a', '--sqs_url', help='AWS SQS Url (optional)')
     parser.add_argument('-c', '--queue_channel', help='Message Queue Channel')
     parser.add_argument('-s', '--slack_token', help='Slack Token')
     parser.add_argument('-q', '--query', help='URLScan query (optional)',
                         default='*')
     parser.add_argument('-n', '--num_results',
-                        help='Number of results to go through per iteration',
+                        help='Number of results to go through ' \
+                             'per iteration (optional)',
                         type=int, default=50)
     args = parser.parse_args()
     reloader = Reloader(**vars(args))

@@ -176,8 +176,6 @@ if __name__ == '__main__':
                         help='Directory containing python plugins ' \
                              'to be used as rules',
                         default='')
-    parser.add_argument('-q', '--query', help='URLScan query (optional)',
-                        default='*')
     args = parser.parse_args()
     gunslinger = Gunslinger(**vars(args))
     gunslinger.run()
