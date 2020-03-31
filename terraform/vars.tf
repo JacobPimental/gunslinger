@@ -1,6 +1,7 @@
 #DigitalOcean Variables
 variable "digitalocean_token" {}
 variable "server_pub_key" {}
+variable "server_priv_key" {}
 variable "server_region" { default="nyc1" }
 
 # API Keys
@@ -14,9 +15,9 @@ variable "use_sqs" {
 }
 
 # Launch Script variables
+variable "rule_dir" { default="../gunslinger/rules/" }
 variable "num_workers" { default="" }
 variable "queue_channel" { default="" }
-variable "rule_dir" { default="" }
 variable "urlscan_query" { default="" }
 variable "num_results" { default="" }
 

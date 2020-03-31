@@ -37,10 +37,26 @@ resource "digitalocean_droplet" "server" {
 		urlscan_api_key = format("-u %s ", var.urlscan_api_key),
 		num_workers = var.num_workers != "" ? format("-t %s ", var.num_workers) : "",
 		queue_channel = var.queue_channel != "" ? format("-c %s ", var.queue_channel) : "",
-		rule_dir = var.rule_dir != "" ? format("-d %s ", var.rule_dir) : "",
 		urlscan_query = var.urlscan_query != "" ? format("-q %s ", var.urlscan_query) : "",
 		num_results = var.num_results != "" ? format("-n %s ", var.num_results) : "",
 		sqs_url = var.use_sqs == true ? format("-a %s ", aws_sqs_queue.message_queue.0.id) : ""})
+	provisioner "remote-exec" {
+		inline = ["sudo mkdir /opt/gunslinger_rules"]
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
+	provisioner "file" {
+		source = substr(var.rule_dir, length(var.rule_dir)-1, 1) == "/" ? var.rule_dir : format("%s/", var.rule_dir)
+		destination = "/opt/gunslinger_rules"
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
 }
 
 output "ip" {
