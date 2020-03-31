@@ -68,10 +68,11 @@ fi
 
 gunslinger_cmd="python3 gunslinger.py $URLSCAN_KEY$SLACK_TOKEN$SQS_URL$QUEUE_CHANNEL$RULE_DIR"
 
-nohup $reload_cmd
+mkdir logs
+nohup $reload_cmd 1>logs/reloader.log 2>logs/reloader\_err.log &
 for i in $(seq 1 $NUM_WORKERS)
 do
-	nohup $gunslinger_cmd
+	nohup $gunslinger_cmd 1>logs/worker$i.log 2>logs/worker$i\_err.log &
 	if [ -z "$SQS_URL" ]
 	then
 		sleep 60
