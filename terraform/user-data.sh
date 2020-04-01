@@ -7,6 +7,10 @@ while [[ ! -d gunslinger_rules ]]
 do
 	:
 done
+while [[ -z $(ls -A gunslinger_rules) ]]
+do
+	:
+done
 git clone "https://github.com/JacobPimental/gunslinger.git"
 mv gunslinger_rules gunslinger/gunslinger/
 cd gunslinger/gunslinger

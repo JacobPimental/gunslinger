@@ -18,9 +18,10 @@ class AWS_SQS():
         response = self.sqs.receive_message(QueueUrl=self.url,
                                             MaxNumberOfMessages=1)
         print(response)
-        if len(response['Messages']) == 0:
+        messages = response.get('Messages', [])
+        if len(messages) == 0:
             return [],0
-        message = response['Messages'][0]
+        message = messages[0]
         self.sqs.delete_message(QueueUrl=self.url,
                                 ReceiptHandle=message['ReceiptHandle'])
         message_body = message['Body']

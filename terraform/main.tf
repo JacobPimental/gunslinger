@@ -5,6 +5,41 @@ provider "digitalocean" {
 	token = var.digitalocean_token
 }
 
+resource "aws_iam_user" "sqs_user" {
+	name = "sqs_reader"
+	path = "/"
+	count = var.use_sqs == false ? 0 : 1
+}
+
+resource "aws_iam_user_policy" "sqs_user_policy" {
+	name = "sqs_gunslinger_policy"
+	user = aws_iam_user.sqs_user.0.name
+	policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage"
+            ],
+            "Resource": "${aws_sqs_queue.message_queue.0.arn}"
+        }
+    ]
+}
+EOF
+	count = var.use_sqs == false ? 0 : 1
+	depends_on = [aws_sqs_queue.message_queue]
+}
+
+resource "aws_iam_access_key" "sqs_user_key" {
+  user = aws_iam_user.sqs_user.0.name
+	count = var.use_sqs == false ? 0 : 1
+}
+
 resource "aws_sqs_queue" "message_queue" {
 	name = "gunslinger_queue.fifo"
   fifo_queue = true	
@@ -20,6 +55,8 @@ output "sqs_arn" {
 	value = aws_sqs_queue.message_queue.*.arn
 }
 
+
+
 resource "digitalocean_ssh_key" "key" {
 	name = "Gunsinger Key"
 	public_key = file(var.server_pub_key)
@@ -31,7 +68,9 @@ resource "digitalocean_droplet" "server" {
 	region = var.server_region
 	size = "s-1vcpu-1gb"
 	ssh_keys = [digitalocean_ssh_key.key.fingerprint]
-	depends_on = [ aws_sqs_queue.message_queue ]
+	depends_on = [ aws_sqs_queue.message_queue,
+								 aws_iam_access_key.sqs_user_key]
+
 	user_data = templatefile("user-data.sh", {
 		slack_token = format("-s %s ", var.slack_token),
 		urlscan_api_key = format("-u %s ", var.urlscan_api_key),
@@ -40,14 +79,23 @@ resource "digitalocean_droplet" "server" {
 		urlscan_query = var.urlscan_query != "" ? format("-q %s ", var.urlscan_query) : "",
 		num_results = var.num_results != "" ? format("-n %s ", var.num_results) : "",
 		sqs_url = var.use_sqs == true ? format("-a %s ", aws_sqs_queue.message_queue.0.id) : ""})
+
 	provisioner "remote-exec" {
-		inline = ["sudo mkdir /opt/gunslinger_rules"]
+		inline = ["sudo mkdir /opt/gunslinger_rules",
+							"sudo mkdir ~/.aws",
+							"sudo echo \"[Credentials]\" > ~/.boto",
+							"sudo echo \"aws_access_key_id = ${aws_iam_access_key.sqs_user_key.0.id}\" >> ~/.boto",
+							"sudo echo \"aws_secret_access_key = ${aws_iam_access_key.sqs_user_key.0.secret}\" >> ~/.boto",
+							"sudo echo \"[default]\" > ~/.aws/config",
+							"sudo echo \"region = ${var.aws_region}\" >> ~/.aws/config",
+							"sudo echo \"output = json\" >> ~/.aws/config"]
 		connection {
 			user = "root"
 			private_key = file(var.server_priv_key)
 			host = digitalocean_droplet.server.ipv4_address
 		}
 	}
+
 	provisioner "file" {
 		source = substr(var.rule_dir, length(var.rule_dir)-1, 1) == "/" ? var.rule_dir : format("%s/", var.rule_dir)
 		destination = "/opt/gunslinger_rules"
