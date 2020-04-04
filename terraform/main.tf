@@ -77,18 +77,46 @@ resource "digitalocean_droplet" "server" {
 		num_workers = var.num_workers != "" ? format("-t %s ", var.num_workers) : "",
 		queue_channel = var.queue_channel != "" ? format("-c %s ", var.queue_channel) : "",
 		urlscan_query = var.urlscan_query != "" ? format("-q %s ", var.urlscan_query) : "",
-		num_results = var.num_results != "" ? format("-n %s ", var.num_results) : "",
+		cron = var.cron != "" ? format("-cr \"%s\" ", var.cron) : "",
 		sqs_url = var.use_sqs == true ? format("-a %s ", aws_sqs_queue.message_queue.0.id) : ""})
 
 	provisioner "remote-exec" {
-		inline = ["sudo mkdir /opt/gunslinger_rules",
-							"sudo mkdir ~/.aws",
-							"sudo echo \"[Credentials]\" > ~/.boto",
-							"sudo echo \"aws_access_key_id = ${aws_iam_access_key.sqs_user_key.0.id}\" >> ~/.boto",
-							"sudo echo \"aws_secret_access_key = ${aws_iam_access_key.sqs_user_key.0.secret}\" >> ~/.boto",
-							"sudo echo \"[default]\" > ~/.aws/config",
-							"sudo echo \"region = ${var.aws_region}\" >> ~/.aws/config",
-							"sudo echo \"output = json\" >> ~/.aws/config"]
+		inline = ["sudo mkdir -p /opt/gunslinger/gunslinger_rules",
+							"sudo mkdir ~/.aws"]
+
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
+	
+	provisioner "file" {
+		source = "${dirname(path.cwd)}/gunslinger/"
+		destination = "/opt/gunslinger"
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
+
+	provisioner "file" {
+		content = templatefile("boto_file", {
+			access_key = var.use_sqs == false ? "" : aws_iam_access_key.sqs_user_key.0.id,
+			secret = var.use_sqs == false ? "" : aws_iam_access_key.sqs_user_key.0.secret})
+		destination = "~/.boto"
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
+
+	provisioner "file" {
+		content = templatefile("aws_config_file", {
+			region = var.aws_region})
+		destination = "~/.aws/config"
 		connection {
 			user = "root"
 			private_key = file(var.server_priv_key)
@@ -98,7 +126,7 @@ resource "digitalocean_droplet" "server" {
 
 	provisioner "file" {
 		source = substr(var.rule_dir, length(var.rule_dir)-1, 1) == "/" ? var.rule_dir : format("%s/", var.rule_dir)
-		destination = "/opt/gunslinger_rules"
+		destination = "/opt/gunslinger/gunslinger_rules"
 		connection {
 			user = "root"
 			private_key = file(var.server_priv_key)

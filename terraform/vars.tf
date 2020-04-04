@@ -19,7 +19,7 @@ variable "rule_dir" { default="../gunslinger/rules/" }
 variable "num_workers" { default="" }
 variable "queue_channel" { default="" }
 variable "urlscan_query" { default="" }
-variable "num_results" { default="" }
+variable "cron" { default="" }
 
 # Miscellaneous
 variable "aws_region" { default="us-east-1" }

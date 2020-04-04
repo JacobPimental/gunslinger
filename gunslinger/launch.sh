@@ -4,7 +4,7 @@ QUEUE_CHANNEL="-c mq "
 SQS_URL=""
 RULE_DIR=""
 QUERY=""
-NUM_RESULTS=""
+CRON=""
 NUM_WORKERS=5
 
 while [[ $# -gt 0 ]]
@@ -46,8 +46,8 @@ do
 			shift
 			;;
 
-		-n|--num_results)
-			NUM_RESULTS="-n $2 "
+		-cr|--cron)
+			CRON="-cr $2 "
 			shift
 			shift
 			;;
@@ -61,12 +61,14 @@ do
 done
 if [ -z "$SQS_URL" ]
 then
-	reload_cmd="python3 reloader.py $URLSCAN_KEY$SLACK_TOKEN$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
+	reload_cmd="python3 reloader.py $URLSCAN_KEY$SLACK_TOKEN$QUEUE_CHANNEL$QUERY$CRON-w $NUM_WORKERS"
 else
-	reload_cmd="python3 reloader.py $URLSCAN_KEY$SQS_URL$QUEUE_CHANNEL$QUERY$NUM_RESULTS"
+	reload_cmd="python3 reloader.py $URLSCAN_KEY$SQS_URL$QUEUE_CHANNEL$QUERY$CRON-w $NUM_WORKERS"
 fi
 
 gunslinger_cmd="python3 gunslinger.py $URLSCAN_KEY$SLACK_TOKEN$SQS_URL$QUEUE_CHANNEL$RULE_DIR"
+echo $reload_cmd
+echo $gunslinger_cmd
 
 mkdir logs
 nohup $reload_cmd 1>logs/reloader.log 2>logs/reloader\_err.log &

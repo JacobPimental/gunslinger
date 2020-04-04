@@ -50,7 +50,6 @@ class Slack_MQ():
 
 
     def get_next_message(self, **kwargs):
-        limit = kwargs.get('limit', 999)
         oldest = kwargs.get('oldest', 0)
         latest = kwargs.get('latest', '')
         cursor = kwargs.get('cursor', '')
@@ -66,7 +65,8 @@ class Slack_MQ():
             i = 0
             for i in range(len(messages)-1):
                 m = messages[i]
-                if 'reactions' in messages[i+1] and 'New batch' in m['text'] \
+                print(m['text'])
+                if 'reactions' in messages[i+1] and m['text'][0] == '<' \
                    and not 'reactions' in m.keys():
                     ts = m['ts']
                     self.client.reactions_add(channel=self.channel,
@@ -75,26 +75,25 @@ class Slack_MQ():
                     oldest = ts
                     dat = m['text'].strip().split('\n')[1:]
                     return dat, oldest
-                elif 'reactions' in m.keys():
+                if 'reactions' in m.keys():
                     return [], 0
-            if 'reactions' in messages[i] and 'New batch' in \
-               messages[i]['text']:
-                ts=messages[i]['ts']
+            if 'reactions' in messages[i] and \
+               messages[i]['text'][0] == '<':
+                ts = messages[i]['ts']
                 self.client.reactions_add(channel=self.channel,
                                           name='+1',
                                           timestamp=ts)
                 oldest = ts
                 dat = m['text'].strip().split('\n')[1:]
                 return dat, oldest
-            else:
-                if 'response_metadata' in data.keys() and \
-                   'next_cursor' in data['response_metadata'].keys():
-                    print('Getting next cursor')
-                    cursor=data['response_metadata']['next_cursor']
-                    return self.get_next_message(oldest=oldest,
-                                                 latest=latest,
-                                                 cursor=cursor)
-                return [], latest
+            if 'response_metadata' in data.keys() and \
+               'next_cursor' in data['response_metadata'].keys():
+                print('Getting next cursor')
+                cursor = data['response_metadata']['next_cursor']
+                return self.get_next_message(oldest=oldest,
+                                             latest=latest,
+                                             cursor=cursor)
+            return [], latest
         except Exception as e:
             print(e)
             if 'response' in dir(e):
@@ -105,8 +104,5 @@ class Slack_MQ():
                     return self.get_next_message(oldest=oldest,
                                                  latest=latest,
                                                  cursor=cursor)
-                else:
-                    return [],0
-            else:
-                return [],oldest
-
+                return [], 0
+            return [], oldest
