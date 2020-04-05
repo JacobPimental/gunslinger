@@ -1,6 +1,7 @@
 # Gunslinger
 "The man in black fled across the desert, and the gunslinger followed."<br>
-\- Stephen King, The Gunslinger
+\- Stephen King, The Gunslinger<br><br>
+Gunslinger is a hunting tool that is based around URLScan's Search API. Gunslinger can crawl URLScan for JavaScript files that match a set of user-defined rules and reports the information back to Slack.
 
 ## Usage
 Gunslinger can be deployed via the Terraform modules in the `terraform` directory. If you have Terraform installed you can deploy the script by running `terraform apply` while in the directory.
