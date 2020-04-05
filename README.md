@@ -1,5 +1,6 @@
 # Gunslinger
-Urlscan hunting tool
+"The man in black fled across the desert, and the gunslinger followed."
+\- Stephen King, The Gunslinger
 
 ## Usage
 Gunslinger can be deployed via the Terraform modules in the `terraform` directory. If you have Terraform installed you can deploy the script by running `terraform apply` while in the directory.
