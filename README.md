@@ -1,3 +1,4 @@
+![](docs/images/logo.png)
 # Gunslinger
 "The man in black fled across the desert, and the gunslinger followed."<br>
 \- Stephen King, The Gunslinger<br><br>
