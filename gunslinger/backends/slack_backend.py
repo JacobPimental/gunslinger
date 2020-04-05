@@ -1,5 +1,5 @@
-import slack
 import time
+import slack
 
 class Slack_MQ():
 
@@ -29,6 +29,16 @@ class Slack_MQ():
 
 
     def post_message(self, text, **kwargs):
+        """Posts message to Slack
+
+        Arguments:
+            text (str): message to send
+            channel (str, optional): channel to send the message to
+            reaction (str, optional): Slack reaction code to add to message
+
+        Returns:
+            (dict): Message response object from Slack API
+        """
         channel = kwargs.get('channel', self.channel)
         reaction = kwargs.get('reaction', '')
         message_response = self.client.chat_postMessage(channel=channel,
@@ -41,6 +51,16 @@ class Slack_MQ():
 
 
     def react_message(self, ts, reaction, channel=''):
+        """Reacts to a Slack message
+
+        Arguments:
+            ts (str): timestamp of message to react to
+            reaction (str): Slack reaction code
+            channel (str, optional): channel that message is in
+
+        Returns:
+            (dict): Reaction response object from Slack API
+        """
         if channel == '':
             channel = self.channel
         reaction_response = self.client.reactions_add(channel=channel,
@@ -50,6 +70,16 @@ class Slack_MQ():
 
 
     def get_next_message(self, **kwargs):
+        """Gets next message in queue and reacts to it to mark it as taken
+
+        Arguments:
+            oldest (str, optional): timestamp of oldest message to check
+            latest (str, optional): timestamp of latest message to check
+            cursor (str, optional): cursor code used for pagination
+
+        Returns:
+            (str, str): message text and timestamp of message
+        """
         oldest = kwargs.get('oldest', 0)
         latest = kwargs.get('latest', '')
         cursor = kwargs.get('cursor', '')
@@ -65,7 +95,6 @@ class Slack_MQ():
             i = 0
             for i in range(len(messages)-1):
                 m = messages[i]
-                print(m['text'])
                 if 'reactions' in messages[i+1] and m['text'][0] == '<' \
                    and not 'reactions' in m.keys():
                     ts = m['ts']

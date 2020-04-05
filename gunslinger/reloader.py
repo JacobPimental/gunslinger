@@ -1,6 +1,6 @@
 import sys
 import argparse
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt
 import math
 
 import requests
@@ -74,6 +74,7 @@ class Reloader():
 
 
     def search_job(self):
+        """Job that runs to fetch the next set of URLScan results."""
         print('Getting results')
         search_results = self.get_results(self.prev_time)
         if len(search_results) == 0:
@@ -97,19 +98,20 @@ if __name__ == '__main__':
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument('-u', '--urlscan_key', help='URLScan API key',
                         required=True)
-    PARSER.add_argument('-a', '--sqs_url', help='AWS SQS Url (optional)')
-    PARSER.add_argument('-c', '--queue_channel', help='Message Queue Channel')
     PARSER.add_argument('-s', '--slack_token', help='Slack Token')
-    PARSER.add_argument('-q', '--query', help='URLScan query (optional)',
+    PARSER.add_argument('-c', '--queue_channel',
+                        help='Message Queue Channel (Default: 5)')
+    PARSER.add_argument('-q', '--query', help='URLScan query (Default: *)',
                         default='*')
     PARSER.add_argument('-cr', '--cron',
                         help='Cron job for searches to run on ' \
-                             '(Default: 0 _ _ _ _)',
-                        type=str, default=['0', '_', '_', '_', '_'],
+                             '(Default: _ _ _ _ _)',
+                        type=str, default=['_', '_', '_', '_', '_'],
                         nargs=5)
     PARSER.add_argument('-w', '--num_workers',
-                        help='Number of gunslinger works to divy tasks',
-                        default=5, type=int)
+                        help='Number of gunslinger works to divy tasks' \
+                             '(Default: 5)', default=5, type=int)
+    PARSER.add_argument('-a', '--sqs_url', help='AWS SQS Url (optional)')
     ARGS = PARSER.parse_args()
     RELOADER = Reloader(**vars(ARGS))
     RELOADER.run()

@@ -159,4 +159,4 @@ override.tf.json
 # example: *tfplan*
 
 # Custom Rules
-rules/
+proprietary_rules/

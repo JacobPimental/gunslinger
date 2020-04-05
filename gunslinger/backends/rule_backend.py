@@ -14,28 +14,32 @@ class RuleManager():
 
 
     def get_path(self, directory):
+        """Gets path of rule directory relative to working directory.
+
+        Arguments:
+            directory (str): Path to the directory of rule files
+
+        Returns:
+            str: A string of the absolute path to the rule directory
+        """
         here = os.path.abspath(os.getcwd())
         return os.path.join(here, directory)
 
 
     def run_rules(self, **kwargs):
+        """Runs rules via python plugins.
+
+        Returns:
+            list: List of all rules that returned True
+        """
+        fired_rules = []
         for plugin_name in self._source.list_plugins():
             rule = self._source.load_plugin(plugin_name)
             try:
-                is_mage = rule.run(**kwargs)
-                if is_mage:
-                    return True
+                rule_fired = rule.run(**kwargs)
+                if rule_fired:
+                    fired_rules.append(plugin_name)
             except Exception:
                 print(f'Cannot run rule {plugin_name} ' \
                       '(possibly formatted incorrectly)')
-        return False
-
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        rule_dir = '.'
-    else:
-        rule_dir = sys.argv[1]
-    args = {'plugin_dir':rule_dir}
-    rule_backend = RuleManager(**args)
-    rule_backend.run_rules(**{'file':'yus'})
+        return fired_rules

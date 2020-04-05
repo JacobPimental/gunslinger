@@ -1,11 +1,7 @@
 import time
-import re
-import requests
-import json
-import slack
 import argparse
-import yaml
 from datetime import datetime as dt, timedelta as td
+import requests
 from backends.slack_backend import Slack_MQ
 from backends.sqs_backend import AWS_SQS
 from backends.rule_backend import RuleManager
@@ -55,11 +51,15 @@ class Gunslinger():
 
         Returns:
             array: Array of request objects from URLScan API
+            dict: Dict containing the original URL submitted to URLScan
+                  and the URLScan report
         """
         result_dat = requests.get(url, headers=self.header).json()
-        if not 'data' in result_dat.keys():
-            return []
-        return result_dat['data']['requests']
+        if not 'data' in result_dat.keys() or not 'task' in result_dat.keys():
+            return ([], {})
+        task_data = {'submitted_url': result_dat['task']['url'],
+                     'urlscan_url': result_dat['task']['reportURL']}
+        return (result_dat['data']['requests'], task_data)
 
 
     def get_response(self, response, h):
@@ -94,20 +94,24 @@ class Gunslinger():
                 made
         """
         print(len(requests))
+        found_scripts = []
         for request in requests:
             try:
                 response = request['response'] #Get the response for each request
                 h = response['hash']
                 script = self.get_response(response, h)
                 url = response['response']['url']
-                print(f'Checking: {url}')
-                if self.check_if_mage(script):
-                    self.slack_backend.post_message(url, channel='#logging')
-                    print(url)
+                fired_rules = self.check_if_mage(script, response)
+                if fired_rules:
+                    script_data = {'url': url,
+                                   'hash': h,
+                                   'fired_rules': fired_rules}
+                    found_scripts.append(script_data)
             except Exception as e:
                 continue
+        return found_scripts
 
-    def check_if_mage(self, script):
+    def check_if_mage(self, script, response):
         """Checks if script is magecart based on regex.
 
         Arguments:
@@ -117,10 +121,32 @@ class Gunslinger():
             boolean: True if regexes match, false if not
         """
         try:
-            return self.rule_manger.run_rules(script=script)
+            return self.rule_manger.run_rules(script=script,
+                                              response_data=response)
         except Exception as e:
             print(e)
             return False
+
+
+    def report(self, report_data):
+        """Reports on urls that rules fired on.
+
+        Arguments:
+            report_data (dict): dictionary of data to report on
+        """
+        submitted_url = report_data['submitted_url']
+        urlscan_url = report_data['urlscan_url']
+        found_scripts = report_data['found_scripts']
+        txt = f'Hit!:gun:\nSubmitted URL: {submitted_url}\n' \
+              f'Result: {urlscan_url}\nScripts found:\n'
+        for script_data in found_scripts:
+            script_url = script_data['url']
+            script_hash = script_data['hash']
+            script_rules = '\n    '.join(script_data['fired_rules'])
+            txt += f'  Script URL: {script_url}\n' \
+                   f'  Script Hash: {script_hash}\n' \
+                   f'  Fired Rules:\n    {script_rules}\n'
+        self.slack_backend.post_message(txt, channel='#logging')
 
 
     def parse_search_results(self, results):
@@ -134,8 +160,11 @@ class Gunslinger():
                 # Contains the URLScan info for URL
                 url = result.replace('<', '').replace('>', '')
                 print(f'Checking {url}')
-                web_requests = self.get_requests(url)
-                self.parse_requests(web_requests)
+                web_requests, report_data = self.get_requests(url)
+                found_scripts = self.parse_requests(web_requests)
+                report_data['found_scripts'] = found_scripts
+                if found_scripts:
+                    self.report(report_data)
             except Exception as e:
                 print(e)
                 continue
@@ -168,14 +197,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--urlscan_key', help='URLScan API key',
                         required=True)
-    parser.add_argument('-a', '--sqs_url', help='URL of AWS SQS service')
-    parser.add_argument('-c', '--queue_channel', help='Message Queue Channel')
     parser.add_argument('-s', '--slack_token', help='Slack Token',
                         required=True)
+    parser.add_argument('-c', '--queue_channel',
+                        help='Message Queue Channel (Default: mq)')
     parser.add_argument('-d', '--rule_dir',
                         help='Directory containing python plugins ' \
-                             'to be used as rules',
-                        default='')
+                        'to be used as rules (Default: ./rules)',
+                        default='rules')
+    parser.add_argument('-a', '--sqs_url',
+                        help='URL of AWS SQS service (optional)')
     args = parser.parse_args()
     gunslinger = Gunslinger(**vars(args))
     gunslinger.run()
