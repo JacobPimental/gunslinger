@@ -1,5 +1,5 @@
 # Gunslinger
-"The man in black fled across the desert, and the gunslinger followed."
+"The man in black fled across the desert, and the gunslinger followed."<br>
 \- Stephen King, The Gunslinger
 
 ## Usage
