@@ -38,7 +38,7 @@ class AWS_SQS():
         self.sqs.delete_message(QueueUrl=self.url,
                                 ReceiptHandle=message['ReceiptHandle'])
         message_body = message['Body']
-        if not 'New batch' in message_body:
+        if 'gunslinger' in message_body:
             return [], 0
         dat = message_body.strip().split('\n')[1:]
         return dat, 0
