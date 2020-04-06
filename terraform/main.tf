@@ -44,6 +44,7 @@ resource "aws_sqs_queue" "message_queue" {
 	name = "gunslinger_queue.fifo"
   fifo_queue = true	
   content_based_deduplication = true
+	receive_wait_time_seconds = 20
   count = var.use_sqs == false ? 0 : 1
 }
 
