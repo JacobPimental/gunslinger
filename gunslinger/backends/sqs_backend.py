@@ -1,10 +1,12 @@
 import boto3
+import logging
 
 class AWS_SQS():
 
-    def __init__(self, url):
+    def __init__(self, **kwargs):
+        logging.getLogger(__name__)
         self.sqs = boto3.client('sqs')
-        self.url = url
+        self.url = kwargs.get('url', '')
 
 
     def post_message(self, text, **kwargs):
@@ -16,9 +18,15 @@ class AWS_SQS():
         Returns:
             dict: Response object from SQS
         """
-        response = self.sqs.send_message(QueueUrl=self.url,
-                                         MessageBody=text,
-                                         MessageGroupId='gunslinger_group')
+        while True:
+            try:
+                response = self.sqs.send_message(QueueUrl=self.url,
+                                                 MessageBody=text,
+                                                 MessageGroupId='gunslinger_group')
+                break
+            except Exception as e:
+                logging.error(e)
+                continue
         return response
 
 
@@ -29,8 +37,15 @@ class AWS_SQS():
             list: list of results from SQS
             int: numeric 0 to comply with Gunslinger logic
         """
-        response = self.sqs.receive_message(QueueUrl=self.url,
-                                            MaxNumberOfMessages=1)
+        while True:
+            try:
+                response = self.sqs.receive_message(QueueUrl=self.url,
+                                                    MaxNumberOfMessages=1)
+                break
+            except Exception as e:
+                logging.error(e)
+                continue
+
         messages = response.get('Messages', [])
         if len(messages) == 0:
             return [], 0

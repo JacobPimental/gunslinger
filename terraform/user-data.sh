@@ -18,5 +18,5 @@ do
 done
 sudo pip3 install -r requirements.txt
 sudo chmod +x launch.sh
-echo "Running ./launch.sh ${slack_token}${urlscan_api_key}${num_workers}${queue_channel}${urlscan_query}${cron}${sqs_url}-d gunslinger_rules"
-./launch.sh ${slack_token}${urlscan_api_key}${num_workers}${queue_channel}${urlscan_query}${cron}${sqs_url}-d gunslinger_rules
+echo "Running ./launch.sh ${num_workers}"
+./launch.sh ${num_workers}

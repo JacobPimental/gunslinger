@@ -64,7 +64,7 @@ resource "digitalocean_ssh_key" "key" {
 }
 
 resource "digitalocean_droplet" "server" {
-	image = "ubuntu-19-10-x64"
+	image = "ubuntu-20-04-x64"
 	name = "gunslinger"
 	region = var.server_region
 	size = "s-1vcpu-1gb"
@@ -73,13 +73,7 @@ resource "digitalocean_droplet" "server" {
 								 aws_iam_access_key.sqs_user_key]
 
 	user_data = templatefile("user-data.sh", {
-		slack_token = format("-s %s ", var.slack_token),
-		urlscan_api_key = format("-u %s ", var.urlscan_api_key),
-		num_workers = var.num_workers != "" ? format("-t %s ", var.num_workers) : "",
-		queue_channel = var.queue_channel != "" ? format("-c %s ", var.queue_channel) : "",
-		urlscan_query = var.urlscan_query != "" ? format("-q %s ", var.urlscan_query) : "",
-		cron = var.cron != "" ? format("-cr \"%s\" ", var.cron) : "",
-		sqs_url = var.use_sqs == true ? format("-a %s ", aws_sqs_queue.message_queue.0.id) : ""})
+		num_workers = var.num_workers != "" ? format("-t %s ", var.num_workers) : ""})
 
 	provisioner "remote-exec" {
 		inline = ["sudo mkdir -p /opt/gunslinger/gunslinger_rules",
@@ -118,6 +112,17 @@ resource "digitalocean_droplet" "server" {
 		content = templatefile("aws_config_file", {
 			region = var.aws_region})
 		destination = "~/.aws/config"
+		connection {
+			user = "root"
+			private_key = file(var.server_priv_key)
+			host = digitalocean_droplet.server.ipv4_address
+		}
+	}
+
+	provisioner "file" {
+		content = templatefile("gunslinger.yaml", {
+			sqs_url = var.use_sqs == false ? "" : aws_sqs_queue.message_queue.0.id})
+		destination = "/opt/gunslinger/gunslinger.yaml"
 		connection {
 			user = "root"
 			private_key = file(var.server_priv_key)

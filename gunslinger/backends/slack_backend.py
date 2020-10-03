@@ -1,13 +1,15 @@
 import time
 import slack
+import logging
 
 class Slack_MQ():
 
-    def __init__(self, slack_token, queue_channel=None):
-        if queue_channel is None:
-            queue_channel = 'mq'
+    def __init__(self, **kwargs):
+        logging.getLogger(__name__)
+        queue_channel = kwargs.get('channel', 'mq')
+        slack_token = kwargs.get('slack_token', '')
         self.client = slack.WebClient(token=slack_token)
-        print(f'Channel is {queue_channel}')
+        logging.info(f'Channel is {queue_channel}')
         self.channel = self.get_channel(queue_channel)
 
 
@@ -20,7 +22,7 @@ class Slack_MQ():
         Returns:
             str: Channel ID
         """
-        print(f'Getting channel {channel}')
+        logging.info(f'Getting channel {channel}')
         channels = self.client.conversations_list()
         for slack_channel in channels['channels']:
             if slack_channel['name'] == channel:
@@ -95,39 +97,39 @@ class Slack_MQ():
             i = 0
             for i in range(len(messages)-1):
                 m = messages[i]
-                if 'reactions' in messages[i+1] and m['text'][0] == '<' \
+                if 'reactions' in messages[i+1] and m['text'][0] == '{' \
                    and not 'reactions' in m.keys():
                     ts = m['ts']
                     self.client.reactions_add(channel=self.channel,
                                               name='+1',
                                               timestamp=ts)
                     oldest = ts
-                    dat = m['text'].strip().split('\n')[1:]
+                    dat = m['text'].strip()
                     return dat, oldest
                 if 'reactions' in m.keys():
                     return [], 0
             if 'reactions' in messages[i] and \
-               messages[i]['text'][0] == '<':
+               messages[i]['text'][0] == '{':
                 ts = messages[i]['ts']
                 self.client.reactions_add(channel=self.channel,
                                           name='+1',
                                           timestamp=ts)
                 oldest = ts
-                dat = m['text'].strip().split('\n')[1:]
+                dat = m['text'].strip()
                 return dat, oldest
             if 'response_metadata' in data.keys() and \
                'next_cursor' in data['response_metadata'].keys():
-                print('Getting next cursor')
+                logging.info('Getting next cursor')
                 cursor = data['response_metadata']['next_cursor']
                 return self.get_next_message(oldest=oldest,
                                              latest=latest,
                                              cursor=cursor)
             return [], latest
         except Exception as e:
-            print(e)
+            logging.error(e)
             if 'response' in dir(e):
                 r = e.response
-                print(r)
+                logging.error(r)
                 time.sleep(60)
                 if r['error'] == 'ratelimited':
                     return self.get_next_message(oldest=oldest,

@@ -160,3 +160,5 @@ override.tf.json
 
 # Custom Rules
 proprietary_rules/
+*.log
+gunslinger.yaml
