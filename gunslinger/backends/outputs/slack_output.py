@@ -1,7 +1,6 @@
-import time
+import logging
 import slack
 import yaml
-import logging
 
 class SlackHandler():
 

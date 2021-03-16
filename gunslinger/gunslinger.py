@@ -1,15 +1,14 @@
 import time
+import sys
 import argparse
 from datetime import datetime as dt, timedelta as td
 import json
-import yaml
 import os
 import logging
+import yaml
 from backends.slack_backend import Slack_MQ
 from backends.sqs_backend import AWS_SQS
 from backends.plugin_backend import PluginManager
-import backends.processors as ProcessorManager
-import backends.outputs as OutputManager
 
 class Gunslinger():
     """Main class for Gunslinger application.
@@ -29,9 +28,22 @@ class Gunslinger():
         self.config_info = self.read_config_file(kwargs.get('config_file'))
         rule_directory = self.config_info.get('rule_dir', '.')
         self.rule_manager = PluginManager(package='gunslinger.rules',
-                                         plugin_dir=rule_directory)
+                                          plugin_dir=rule_directory)
+        processor_directory = self.config_info.get('processor_dir',
+                                                   './backends/processors')
+        self.proc_manager = PluginManager(package='gunslinger.processors',
+                                          plugin_dir=processor_directory)
+        out_dir = self.config_info.get('output_plugin_dir',
+                                       './backends/outputs')
+        self.out_manager = PluginManager(package='gunslinger.outputs',
+                                         plugin_dir=out_dir)
+        mq_type = self.config_info.get('message_queue', 'slack_mq')
         queue_data = self.config_info.get('queue_data', {})
-        self.message_queue = Slack_MQ(**queue_data)
+
+        if mq_type == 'slack_mq':
+            self.message_queue = Slack_MQ(**queue_data)
+        elif mq_type == 'aws_sqs':
+            self.message_queue = AWS_SQS(**queue_data)
 
 
     def read_config_file(self, config_file):
@@ -40,26 +52,11 @@ class Gunslinger():
         try:
             with open(config_path) as f:
                 config_data = yaml.load(f, Loader=yaml.FullLoader)
+
                 return config_data
         except FileNotFoundError:
             logging.critical("Config file not found")
-            exit()
-
-
-    def check_if_mage(self, rule_data):
-        """Checks if script is magecart based on regex.
-
-        Arguments:
-            script (string): Javascript to run regexes on
-
-        Returns:
-            boolean: True if regexes match, false if not
-        """
-        try:
-            return self.rule_manager.run_rules(**rule_data)
-        except Exception as e:
-            logging.error(e)
-            return False
+            sys.exit()
 
 
     def report(self, report_data):
@@ -68,24 +65,27 @@ class Gunslinger():
         Arguments:
             report_data (dict): dictionary of data to report on
         """
+
         for output in self.config_info['outputs']:
             output_name = output['name']
-            OutputManager.run_output(output_name,
-                                     report_data,
-                                     output)
+            self.out_manager.run_output(output_name,
+                                        report_data,
+                                        output)
         del report_data
+
 
     def parse_message(self, data):
         processor_name = data.get('processor', '')
+
         if not processor_name:
             return
         logging.info(f'Loading processor {processor_name}')
         processor_data = data.get('data', {})
         config_info = self.config_info.get(processor_name, {})
-        returned_data = ProcessorManager.run_processor(processor_name,
-                                                       processor_data,
-                                                       config_info,
-                                                       self.rule_manager)
+        returned_data = self.proc_manager.run_processor(
+            processor_name, processor_data,
+            config_info, self.rule_manager)
+
         if returned_data:
             self.report(returned_data)
 
@@ -97,11 +97,13 @@ class Gunslinger():
         logging.info('\t― Stephen King, The Gunslinger')
         prev_time = 0
         latest = dt.now().timestamp()
+
         while True:
             data, prev_time = self.message_queue.get_next_message(
                 oldest=prev_time,
                 latest=latest)
             latest = (dt.fromtimestamp(float(prev_time)) + td(hours=1)).timestamp()
+
             if dt.fromtimestamp(latest) > dt.now():
                 latest = dt.now().timestamp()
             elif prev_time == 0:
@@ -113,6 +115,7 @@ class Gunslinger():
                 logging.error(e)
                 logging.info('Sleeping')
                 time.sleep(self.config_info['queue_data'].get('rate_limit', 0))
+
                 continue
 
 

@@ -37,9 +37,10 @@ class Reloader():
         self.num_workers = data.get('num_workers', 5)
         queue_type = self.config_info.get('message_queue', '')
         queue_data = self.config_info.get('queue_data', {})
+
         if queue_type == 'slack_mq':
             self.message_queue = Slack_MQ(**queue_data)
-        elif queue_type == 'sqs_mq':
+        elif queue_type == 'aws_sqs':
             self.message_queue = AWS_SQS(**queue_data)
         else:
             logging.critical('Error: No message queue specified!')
@@ -52,6 +53,7 @@ class Reloader():
         try:
             with open(config_path) as f:
                 config_data = yaml.load(f, Loader=yaml.FullLoader)
+
                 return config_data
         except FileNotFoundError:
             logging.critical('config file not found')
@@ -72,9 +74,11 @@ class Reloader():
                                           params=self.payload)
             search_dat = search_results.json()
             results = search_dat.get('results', [])
+
             return results
         except Exception as e:
             logging.error(e)
+
             return []
 
 
@@ -86,13 +90,16 @@ class Reloader():
         """
         result_urls = [result.get('result') for result in results]
         div = math.ceil(len(result_urls) / self.num_workers)
+
         for i in range(self.num_workers):
             result_data = result_urls[i*div:(i+1)*div]
+
             if not result_data:
                 continue
             processor_data = {'processor':'urlscan_processor',
                               'data': result_urls[i*div:(i+1)*div]}
             text_data = json.dumps(processor_data)
+
             if text_data != "":
                 msg = text_data
                 self.message_queue.post_message(msg)
@@ -102,6 +109,7 @@ class Reloader():
         """Job that runs to fetch the next set of URLScan results."""
         logging.info('Getting results')
         search_results = self.get_results(self.prev_time)
+
         if len(search_results) == 0:
             return
         self.prev_time = dt.strptime(search_results[0]['task']['time'],
@@ -116,6 +124,7 @@ class Reloader():
         self.message_queue.post_message(msg, reaction='gun')
         scheduler = BlockingScheduler()
         scheduler.add_job(self.search_job, CronTrigger.from_crontab(self.cron))
+
         while True:
             scheduler.start()
 

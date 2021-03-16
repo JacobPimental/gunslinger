@@ -1,0 +1,20 @@
+processors:
+  urlscan_processor:
+    api_key: "<api-key-for-urlscan>"
+  domain_processor:
+    timeout: 10 # timeout value for requests
+outputs:
+  - name: "slack_output"
+    slack_token: "<slack-api-key>"
+    channel: "<channel to log hits to>"
+queue_data:
+  slack_token: "<slack-api-key for message queue>"
+  channel: "<channel for message queue>"
+  rate_limit: 15 # Amount in seconds to wait when hitting rate limit
+inputs:
+  urlscan_input:
+    query: "<query to run for urlscan>"
+    urlscan_key: "<urlscan api key>"
+    cron: "<cron schedule to run query>"
+    num_workers: 5 # number of gunslinger agents that will pull results from MQ
+rule_dir: '<path to directory containing rules>'

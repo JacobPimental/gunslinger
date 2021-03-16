@@ -18,21 +18,28 @@ class URLScanProcessor():
         Arguments:
             results (array): Array of object results from URLScan
         """
-        report_data = []
+        report_data = {'results':[]}
+
         for result in results:
             try:
                 # Contains the URLScan info for URL
                 url = result.replace('<', '').replace('>', '')
                 web_requests, submitted_url, urlscan_url = self.get_requests(url)
-                report = self.parse_requests(web_requests)
-                if report['scripts_found']:
-                    report['submitted_url'] = submitted_url
-                    report['urlscan_url'] = urlscan_url
-                    report_data.append(report)
+                scripts_found = self.parse_requests(web_requests)
+
+                if scripts_found:
+                    for script_data in scripts_found:
+                        report = script_data
+                        report['submitted_url'] = submitted_url
+                        report['urlscan_url'] = urlscan_url
+                        report_data['results'].append(report)
             except Exception as e:
                 logger.error(e)
+
                 continue
-        return report_data
+        if report_data['results']:
+            return report_data
+        return None
 
 
     def get_requests(self, url):
@@ -47,10 +54,12 @@ class URLScanProcessor():
                   and the URLScan report
         """
         result_dat = requests.get(url, headers=self.header, timeout=10).json()
+
         if not 'data' in result_dat.keys() or not 'task' in result_dat.keys():
             return ([], '', '')
         submitted_url = result_dat['task']['url']
         urlscan_url = result_dat['task']['reportURL']
+
         return result_dat['data']['requests'], submitted_url, urlscan_url
 
 
@@ -70,8 +79,10 @@ class URLScanProcessor():
         response = response['response']
         url = f'https://urlscan.io/responses/{h}/' #URLScan response URL
         script_r = requests.get(url, timeout=10)
+
         if script_r.status_code == 200:
             script = script_r.text
+
         return script
 
 
@@ -82,7 +93,8 @@ class URLScanProcessor():
             requests (array): Array of objects contianing data on the request
                 made
         """
-        report_data = {'scripts_found': []}
+        scripts_found = []
+
         for request in requests:
             try:
                 response = request['response'] #Get the response for each request
@@ -91,15 +103,18 @@ class URLScanProcessor():
                 url = response['response']['url']
                 fired_rules = self.rule_manager.run_rules(script=script,
                                                           response_data=response)
+
                 if fired_rules:
                     logger.info(f'Rule fired on {url}')
                     script_data = {'url':url, 'hash':h,
                                    'fired_rules':fired_rules}
-                    report_data['scripts_found'].append(script_data)
+                    scripts_found.append(script_data)
             except Exception as e:
                 logger.error(e)
+
                 continue
-        return report_data
+
+        return scripts_found
 
 def run(**kwargs):
     config_data = kwargs.get('config_info')
@@ -107,4 +122,5 @@ def run(**kwargs):
     urlscan_processor = URLScanProcessor(config_data, rule_manager)
     rule_data = urlscan_processor.parse_search_results(kwargs.get('data',
                                                                   []))
+
     return rule_data

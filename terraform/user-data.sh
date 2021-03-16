@@ -1,7 +1,7 @@
 #!/bin/bash
 sudo apt update
-sudo apt upgrade -y
-sudo apt install python3-pip -y
+sudo apt upgrade --yes --force-yes -o Dpkg::Options::="--force-confnew"
+sudo apt install python3-pip --yes --force-yes
 cd /opt/
 while [[ ! -d gunslinger ]]
 do

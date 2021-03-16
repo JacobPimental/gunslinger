@@ -69,8 +69,8 @@ resource "digitalocean_droplet" "server" {
 	region = var.server_region
 	size = "s-1vcpu-1gb"
 	ssh_keys = [digitalocean_ssh_key.key.fingerprint]
-	depends_on = [ aws_sqs_queue.message_queue,
-								 aws_iam_access_key.sqs_user_key]
+#	depends_on = [ aws_sqs_queue.message_queue,
+#								 aws_iam_access_key.sqs_user_key]
 
 	user_data = templatefile("user-data.sh", {
 		num_workers = var.num_workers != "" ? format("-t %s ", var.num_workers) : ""})
