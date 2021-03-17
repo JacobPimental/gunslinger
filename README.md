@@ -1,5 +1,5 @@
 ![](docs/images/logo.png)
-# Gunslinger <br>[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S89H72)
+# Gunslinger
 "The man in black fled across the desert, and the gunslinger followed."<br>
 \- Stephen King, The Gunslinger<br><br>
 Gunslinger is a hunting tool that is based around URLScan's Search API. Gunslinger can crawl URLScan for JavaScript files that match a set of user-defined rules and reports the information back to Slack.
