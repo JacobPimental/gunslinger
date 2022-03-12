@@ -10,6 +10,7 @@ from backends.slack_backend import Slack_MQ
 from backends.sqs_backend import AWS_SQS
 from backends.plugin_backend import PluginManager
 
+
 class Gunslinger():
     """Main class for Gunslinger application.
 
@@ -45,7 +46,6 @@ class Gunslinger():
         elif mq_type == 'aws_sqs':
             self.message_queue = AWS_SQS(**queue_data)
 
-
     def read_config_file(self, config_file):
         here = os.path.abspath(os.getcwd())
         config_path = os.path.join(here, config_file)
@@ -57,7 +57,6 @@ class Gunslinger():
         except FileNotFoundError:
             logging.critical("Config file not found")
             sys.exit()
-
 
     def report(self, report_data):
         """Reports on urls that rules fired on.
@@ -72,7 +71,6 @@ class Gunslinger():
                                         report_data,
                                         output)
         del report_data
-
 
     def parse_message(self, data):
         processor_name = data.get('processor', '')
@@ -89,11 +87,10 @@ class Gunslinger():
         if returned_data:
             self.report(returned_data)
 
-
     def run(self):
         """Starts the application."""
-        logging.info('“The man in black fled across the desert, and the ' \
-              'gunslinger followed.”')
+        logging.info('“The man in black fled across the desert, and the '
+                     'gunslinger followed.”')
         logging.info('\t― Stephen King, The Gunslinger')
         prev_time = 0
         latest = dt.now().timestamp()

@@ -36,13 +36,11 @@ class SlackHandler():
         Arguments:
             text (str): message to send
             channel (str, optional): channel to send the message to
-            reaction (str, optional): Slack reaction code to add to message
 
         Returns:
             (dict): Message response object from Slack API
         """
         channel = kwargs.get('channel', self.channel)
-        reaction = kwargs.get('reaction', '')
         message_response = self.client.chat_postMessage(channel=channel,
                                                         text=text)
         return message_response
