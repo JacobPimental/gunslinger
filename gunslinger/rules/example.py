@@ -1,6 +1,7 @@
 import re
 
 def run(**kwargs):
+    print('Running Rule')
     reg1 = r'function ant_cockroach'
     reg2 = r'cc_number'
     reg3 = r'payment_checkout[0-9]'

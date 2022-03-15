@@ -166,3 +166,4 @@ versions.tf
 proprietary_rules/
 *.log
 gunslinger.yaml
+lambda-package.zip

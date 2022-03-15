@@ -1,5 +1,6 @@
 import requests
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class URLScanProcessor():
                 # Contains the URLScan info for URL
                 url = result.replace('<', '').replace('>', '')
                 web_requests, submitted_url, urlscan_url = self.get_requests(url)
-                scripts_found = self.parse_requests(web_requests)
+                scripts_found = self.parse_requests_mp(web_requests)
 
                 if scripts_found:
                     for script_data in scripts_found:
@@ -53,8 +54,9 @@ class URLScanProcessor():
             dict: Dict containing the original URL submitted to URLScan
                   and the URLScan report
         """
+        logging.debug(f"Getting url: {url}")
         result_dat = requests.get(url, headers=self.header, timeout=10).json()
-
+        logging.debug(f'Results: {result_dat}')
         if not 'data' in result_dat.keys() or not 'task' in result_dat.keys():
             return ([], '', '')
         submitted_url = result_dat['task']['url']
@@ -63,27 +65,26 @@ class URLScanProcessor():
         return result_dat['data']['requests'], submitted_url, urlscan_url
 
 
-    def get_response(self, response, h):
+    def get_response(self, h, response):
         """Gets the data returned from a request made by a webpage.
 
         Arguments:
-            response (dict): URLScan response object
             h (str): Hash of the response, used to get the url for the response
                 from URLScan
 
         Returns:
             string: The data returned by the request (i.e. scripts, html, etc.)
         """
-        logger.info(f'Getting hash {h}')
+        print(f'Getting hash {h}')
         script = ''
-        response = response['response']
         url = f'https://urlscan.io/responses/{h}/' #URLScan response URL
-        script_r = requests.get(url, timeout=10)
-
+        script_r = requests.get(url, timeout=5)
         if script_r.status_code == 200:
             script = script_r.text
-
-        return script
+            fired_rules = self.rule_manager.run_rules(script=script, response_data=response)
+            if fired_rules:
+                return {'url':response['response']['url'], 'hash':h, 'fired_rules':fired_rules}
+        return None
 
 
     def parse_requests(self, requests):
@@ -98,6 +99,7 @@ class URLScanProcessor():
         for request in requests:
             try:
                 response = request['response'] #Get the response for each request
+                logging.debug(f'Got response: {response}')
                 h = response['hash']
                 script = self.get_response(response, h)
                 url = response['response']['url']
@@ -110,11 +112,22 @@ class URLScanProcessor():
                                    'fired_rules':fired_rules}
                     scripts_found.append(script_data)
             except Exception as e:
-                logger.error(e)
+                logger.error(f'URLScan Processor - parse_requests: {e}')
 
                 continue
-
         return scripts_found
+
+
+    def parse_requests_mp(self, requests):
+        hashes = [r['response']['hash'] for r in requests if 'response' in r.keys() and 'hash' in r['response'].keys()]
+        response_data = [r['response'] for r in requests if 'response' in r.keys() and 'hash' in r['response'].keys()]
+        scripts = []
+        executor = ThreadPoolExecutor(max_workers=50)
+        scripts += list(executor.map(lambda h, r:self.get_response(h, r), hashes, response_data))
+        while(None in scripts):
+            scripts.remove(None)
+        print(scripts)
+        return scripts
 
 def run(**kwargs):
     config_data = kwargs.get('config_info')
